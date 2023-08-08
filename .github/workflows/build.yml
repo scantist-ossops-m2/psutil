@@ -103,6 +103,7 @@ jobs:
       run: |
         make generate-manifest
         python setup.py sdist
+        python -m pip install unittest2
         mv dist/psutil*.tar.gz wheelhouse/
 
   # Run linters
