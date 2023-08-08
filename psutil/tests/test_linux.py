@@ -21,7 +21,6 @@ import struct
 import textwrap
 import time
 import unittest
-import warnings
 
 import psutil
 from psutil import LINUX
@@ -374,27 +373,25 @@ class TestSystemVirtualMemoryMocks(PsutilTestCase):
                 MemTotal:       16325648 kB
                 SReclaimable:     346648 kB
                 """).encode()) as m:
-            with warnings.catch_warnings(record=True) as ws:
-                warnings.simplefilter("always")
+            with self.assertWarns(RuntimeWarning) as cm:
                 ret = psutil.virtual_memory()
-                assert m.called
-                self.assertEqual(len(ws), 1)
-                w = ws[0]
-                self.assertIn(
-                    "memory stats couldn't be determined", str(w.message))
-                self.assertIn("cached", str(w.message))
-                self.assertIn("shared", str(w.message))
-                self.assertIn("active", str(w.message))
-                self.assertIn("inactive", str(w.message))
-                self.assertIn("buffers", str(w.message))
-                self.assertIn("available", str(w.message))
-                self.assertEqual(ret.cached, 0)
-                self.assertEqual(ret.active, 0)
-                self.assertEqual(ret.inactive, 0)
-                self.assertEqual(ret.shared, 0)
-                self.assertEqual(ret.buffers, 0)
-                self.assertEqual(ret.available, 0)
-                self.assertEqual(ret.slab, 0)
+        assert m.called
+        self.assertEqual(len(cm.warnings), 1)
+        self.assertIn(
+            "memory stats couldn't be determined", str(cm.warning))
+        self.assertIn("cached", str(cm.warning))
+        self.assertIn("shared", str(cm.warning))
+        self.assertIn("active", str(cm.warning))
+        self.assertIn("inactive", str(cm.warning))
+        self.assertIn("buffers", str(cm.warning))
+        self.assertIn("available", str(cm.warning))
+        self.assertEqual(ret.cached, 0)
+        self.assertEqual(ret.active, 0)
+        self.assertEqual(ret.inactive, 0)
+        self.assertEqual(ret.shared, 0)
+        self.assertEqual(ret.buffers, 0)
+        self.assertEqual(ret.available, 0)
+        self.assertEqual(ret.slab, 0)
 
     @retry_on_failure()
     def test_avail_old_percent(self):
@@ -432,13 +429,12 @@ class TestSystemVirtualMemoryMocks(PsutilTestCase):
                 Shmem:            577588 kB
                 SReclaimable:     346648 kB
                 """).encode()) as m:
-            with warnings.catch_warnings(record=True) as ws:
+            with self.assertWarns(RuntimeWarning) as cm:
                 ret = psutil.virtual_memory()
-            assert m.called
-            self.assertEqual(ret.available, 6574984 * 1024)
-            w = ws[0]
-            self.assertIn(
-                "inactive memory stats couldn't be determined", str(w.message))
+        assert m.called
+        self.assertEqual(ret.available, 6574984 * 1024)
+        self.assertIn("inactive memory stats couldn't be determined",
+                      str(cm.warning))
 
     def test_avail_old_missing_fields(self):
         # Remove Active(file), Inactive(file) and SReclaimable
@@ -457,13 +453,12 @@ class TestSystemVirtualMemoryMocks(PsutilTestCase):
                     MemTotal:       16325648 kB
                     Shmem:            577588 kB
                     """).encode()) as m:
-            with warnings.catch_warnings(record=True) as ws:
+            with self.assertWarns(RuntimeWarning) as cm:
                 ret = psutil.virtual_memory()
-            assert m.called
-            self.assertEqual(ret.available, 2057400 * 1024 + 4818144 * 1024)
-            w = ws[0]
-            self.assertIn(
-                "inactive memory stats couldn't be determined", str(w.message))
+        assert m.called
+        self.assertEqual(ret.available, 2057400 * 1024 + 4818144 * 1024)
+        self.assertIn("inactive memory stats couldn't be determined",
+                      str(cm.warning))
 
     def test_avail_old_missing_zoneinfo(self):
         # Remove /proc/zoneinfo file. Make sure fallback is used
@@ -487,14 +482,12 @@ class TestSystemVirtualMemoryMocks(PsutilTestCase):
             with mock_open_exception(
                     "/proc/zoneinfo",
                     IOError(errno.ENOENT, 'no such file or directory')):
-                with warnings.catch_warnings(record=True) as ws:
+                with self.assertWarns(RuntimeWarning) as cm:
                     ret = psutil.virtual_memory()
-                    self.assertEqual(
-                        ret.available, 2057400 * 1024 + 4818144 * 1024)
-                    w = ws[0]
-                    self.assertIn(
-                        "inactive memory stats couldn't be determined",
-                        str(w.message))
+        self.assertEqual(
+            ret.available, 2057400 * 1024 + 4818144 * 1024)
+        self.assertIn(
+            "inactive memory stats couldn't be determined", str(cm.warning))
 
     def test_virtual_memory_mocked(self):
         # Emulate /proc/meminfo because neither vmstat nor free return slab.
@@ -607,35 +600,30 @@ class TestSystemSwapMemory(PsutilTestCase):
 
     def test_missing_sin_sout(self):
         with mock.patch('psutil._common.open', create=True) as m:
-            with warnings.catch_warnings(record=True) as ws:
-                warnings.simplefilter("always")
+            with self.assertWarns(RuntimeWarning) as cm:
                 ret = psutil.swap_memory()
-                assert m.called
-                self.assertEqual(len(ws), 1)
-                w = ws[0]
-                self.assertIn(
-                    "'sin' and 'sout' swap memory stats couldn't "
-                    "be determined", str(w.message))
-                self.assertEqual(ret.sin, 0)
-                self.assertEqual(ret.sout, 0)
+        assert m.called
+        self.assertEqual(len(cm.warnings), 1)
+        msg = "'sin' and 'sout' swap memory stats couldn't be determined"
+        self.assertIn(msg, str(cm.warning))
+        self.assertEqual(ret.sin, 0)
+        self.assertEqual(ret.sout, 0)
 
     def test_no_vmstat_mocked(self):
         # see https://github.com/giampaolo/psutil/issues/722
         with mock_open_exception(
                 "/proc/vmstat",
                 IOError(errno.ENOENT, 'no such file or directory')) as m:
-            with warnings.catch_warnings(record=True) as ws:
-                warnings.simplefilter("always")
+            with self.assertWarns(RuntimeWarning) as cm:
                 ret = psutil.swap_memory()
-                assert m.called
-                self.assertEqual(len(ws), 1)
-                w = ws[0]
-                self.assertIn(
-                    "'sin' and 'sout' swap memory stats couldn't "
-                    "be determined and were set to 0",
-                    str(w.message))
-                self.assertEqual(ret.sin, 0)
-                self.assertEqual(ret.sout, 0)
+        assert m.called
+        self.assertEqual(len(cm.warnings), 1)
+        self.assertIn(
+            "'sin' and 'sout' swap memory stats couldn't "
+            "be determined and were set to 0",
+            str(cm.warning))
+        self.assertEqual(ret.sin, 0)
+        self.assertEqual(ret.sout, 0)
 
     def test_meminfo_against_sysinfo(self):
         # Make sure the content of /proc/meminfo about swap memory
