@@ -36,7 +36,8 @@ PY3_DEPS = \
 PY2_DEPS = \
 	futures \
 	ipaddress \
-	mock
+	mock \
+	unittest2
 PY_DEPS = `$(PYTHON) -c \
 	"import sys; \
 	py3 = sys.version_info[0] == 3; \
@@ -107,12 +108,14 @@ uninstall:  ## Uninstall this package via pip.
 install-pip:  ## Install pip (no-op if already installed).
 	@$(PYTHON) -c \
 		"import sys, ssl, os, pkgutil, tempfile, atexit; \
+		PY3 = sys.version_info[0] >= 3; \
 		sys.exit(0) if pkgutil.find_loader('pip') else None; \
 		pyexc = 'from urllib.request import urlopen' if sys.version_info[0] == 3 else 'from urllib2 import urlopen'; \
 		exec(pyexc); \
 		ctx = ssl._create_unverified_context() if hasattr(ssl, '_create_unverified_context') else None; \
 		kw = dict(context=ctx) if ctx else {}; \
-		req = urlopen('https://bootstrap.pypa.io/get-pip.py', **kw); \
+		url = 'https://bootstrap.pypa.io/get-pip.py' if PY3 else 'https://bootstrap.pypa.io/pip/2.7/get-pip.py'; \
+		req = urlopen(url, **kw); \
 		data = req.read(); \
 		f = tempfile.NamedTemporaryFile(suffix='.py'); \
 		atexit.register(f.close); \

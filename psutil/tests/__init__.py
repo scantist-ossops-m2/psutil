@@ -33,7 +33,6 @@ import tempfile
 import textwrap
 import threading
 import time
-import unittest
 import warnings
 from socket import AF_INET
 from socket import AF_INET6
@@ -71,7 +70,9 @@ except ImportError:
 
 if PY3:
     import enum
+    import unittest
 else:
+    import unittest2 as unittest
     enum = None
 
 if POSIX:
